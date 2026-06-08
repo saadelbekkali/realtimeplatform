@@ -119,7 +119,7 @@ docker compose -f docker/docker-compose.yml --profile orchestration up -d
 
 # Visualización — Superset
 docker compose -f docker/docker-compose.yml --profile viz up -d
-# → Entrar en http://localhost:8088 (admin / admin)
+# → Entrar en http://localhost:8088 (admin / admin123)
 
 # Todo a la vez desde cero
 docker compose -f docker/docker-compose.yml \
@@ -188,6 +188,101 @@ Los jobs Gold se lanzan via `docker exec` + `spark-submit` sobre el contenedor S
 ├── streaming/        # SparkSession y procesador CDC
 ├── tests/            # Tests unitarios por capa
 └── main.py           # Entrypoint: arranca Bronze + Silver streaming
+```
+
+---
+
+## Superset — conexión DuckDB y queries
+
+Superset lee las tablas Delta Lake directamente mediante **DuckDB + extensión Delta**, sin necesidad de un servidor adicional. El volumen `lakehouse_data` está montado en `/lakehouse` dentro del contenedor.
+
+### 1. Añadir la conexión en Superset
+
+`Settings → Database Connections → + Database → Other`
+
+| Campo | Valor |
+|---|---|
+| Display name | DuckDB Delta |
+| SQLAlchemy URI | `duckdb:///:memory:` |
+
+En **Advanced → Other → Engine Parameters** añadir:
+```json
+{"connect_args": {"preload_extensions": ["delta"]}}
+```
+
+Guardar y probar la conexión.
+
+### 2. Queries de ejemplo
+
+**Silver — últimos trades en tiempo real**
+```sql
+SELECT
+    trade_time,
+    symbol,
+    price,
+    quantity,
+    quote_qty,
+    side
+FROM delta_scan('/lakehouse/silver/trades')
+ORDER BY trade_time DESC
+LIMIT 100;
+```
+
+**Gold — velas OHLCV de BTCUSDT**
+```sql
+SELECT
+    candle_time,
+    open,
+    high,
+    low,
+    close,
+    volume_usdt,
+    num_trades
+FROM delta_scan('/lakehouse/gold/ohlcv')
+WHERE symbol = 'BTCUSDT'
+ORDER BY candle_time DESC
+LIMIT 60;
+```
+
+**Gold — presión compradora vs vendedora por símbolo**
+```sql
+SELECT
+    symbol,
+    side,
+    SUM(volume_usdt)  AS total_volume_usdt,
+    SUM(num_trades)   AS total_trades,
+    AVG(avg_price)    AS avg_price
+FROM delta_scan('/lakehouse/gold/buy_sell_pressure')
+GROUP BY symbol, side
+ORDER BY symbol, side;
+```
+
+**Gold — ranking de volumen (últimas 24h)**
+```sql
+SELECT
+    symbol,
+    total_volume_usdt,
+    total_trades,
+    price_low,
+    price_high,
+    last_price,
+    ROUND(price_range_pct, 2) AS volatilidad_pct
+FROM delta_scan('/lakehouse/gold/volume_ranking')
+ORDER BY total_volume_usdt DESC;
+```
+
+**Comparativa buy vs sell en tiempo (útil para gráfico de área)**
+```sql
+SELECT
+    window_time,
+    symbol,
+    MAX(CASE WHEN side = 'buy'  THEN volume_usdt END) AS buy_volume,
+    MAX(CASE WHEN side = 'sell' THEN volume_usdt END) AS sell_volume
+FROM delta_scan('/lakehouse/gold/buy_sell_pressure')
+WHERE symbol = 'BTCUSDT'
+GROUP BY window_time, symbol
+ORDER BY window_time DESC
+LIMIT 60;
 ```
 
 ---
