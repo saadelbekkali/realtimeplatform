@@ -58,9 +58,9 @@ Binance REST API (/api/v3/trades)
 | Servicio      | URL                        | Credenciales            |
 |---------------|----------------------------|-------------------------|
 | Kafka UI      | http://localhost:8080      | —                       |
-| Airflow       | http://localhost:8081      | admin / admin           |
+| Airflow       | http://localhost:8081      | admin / admin123        |
 | Debezium API  | http://localhost:8083      | —                       |
-| Superset      | http://localhost:8088      | admin / admin           |
+| Superset      | http://localhost:8088      | admin / admin123        |
 | Debezium UI   | http://localhost:8090      | —                       |
 | pgAdmin       | http://localhost:5050      | admin@admin.com / admin |
 | PostgreSQL    | localhost:5432             | postgres / postgres     |
@@ -101,13 +101,45 @@ docker exec realtimeplatform-kafka kafka-console-consumer \
 
 # 5. Ver logs del job de Spark Streaming
 docker logs realtimeplatform-spark --tail 30
+```
 
-# 6. (Opcional) Levantar Airflow para la capa Gold
-docker compose -f docker/docker-compose.yml --profile orchestration up -d
-# Activar el DAG "crypto_pipeline" en http://localhost:8081
+---
 
-# 7. (Opcional) Levantar herramientas de monitorización
+## Añadir perfiles sobre el core en marcha
+
+Una vez el core está corriendo se pueden activar perfiles adicionales sin parar nada:
+
+```bash
+# Monitorización (Kafka UI · Debezium UI · pgAdmin)
 docker compose -f docker/docker-compose.yml --profile monitoring up -d
+
+# Orquestación — Airflow
+docker compose -f docker/docker-compose.yml --profile orchestration up -d
+# → Entrar en http://localhost:8081 y activar el DAG "crypto_pipeline"
+
+# Visualización — Superset
+docker compose -f docker/docker-compose.yml --profile viz up -d
+# → Entrar en http://localhost:8088 (admin / admin)
+
+# Todo a la vez desde cero
+docker compose -f docker/docker-compose.yml \
+  --profile core --profile monitoring --profile orchestration --profile viz \
+  up -d --build
+```
+
+Para parar un perfil concreto sin afectar al resto:
+
+```bash
+# Parar solo Airflow
+docker compose -f docker/docker-compose.yml --profile orchestration down
+
+# Parar solo monitorización
+docker compose -f docker/docker-compose.yml --profile monitoring down
+
+# Reset completo — para todo y borra volúmenes
+docker compose -f docker/docker-compose.yml \
+  --profile core --profile monitoring --profile orchestration --profile viz \
+  down -v
 ```
 
 ---

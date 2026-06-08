@@ -1,6 +1,8 @@
 # Runtime — Delta Lake y checkpoints (datos generados, no código)
 checkpoints/
-lakehouse/
+lakehouse/bronze/
+lakehouse/silver/
+lakehouse/gold/
 
 # Python
 __pycache__/
