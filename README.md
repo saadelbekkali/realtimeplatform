@@ -205,10 +205,8 @@ Superset lee las tablas Delta Lake directamente mediante **DuckDB + extensión D
 | Display name | DuckDB Delta |
 | SQLAlchemy URI | `duckdb:///:memory:` |
 
-En **Advanced → Other → Engine Parameters** añadir:
-```json
-{"connect_args": {"preload_extensions": ["delta"]}}
-```
+En **Advanced → Security** activar:
+- ✅ **Allow DML** — necesario para poder ejecutar `CREATE VIEW`, `CREATE TABLE AS` y otras sentencias en SQL Lab
 
 Guardar y probar la conexión.
 
