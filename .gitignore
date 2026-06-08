@@ -1,0 +1,25 @@
+# Runtime — Delta Lake y checkpoints (datos generados, no código)
+checkpoints/
+lakehouse/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+
+# Entorno
+.env
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+*.iml

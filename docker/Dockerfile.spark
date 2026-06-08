@@ -1,0 +1,32 @@
+FROM apache/spark:3.5.1
+
+USER root
+
+RUN apt-get update && apt-get install -y python3-pip && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Dependencias Python
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir pyspark==3.5.1 delta-spark==3.1.0 python-dotenv requests psycopg2-binary
+
+# Pre-descargar JARs durante el build para no hacerlo en runtime
+RUN /opt/spark/bin/spark-submit \
+    --packages io.delta:delta-spark_2.12:3.1.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+    --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
+    --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
+    /dev/null 2>/dev/null || true
+
+# Código de la aplicación
+COPY config/      ./config/
+COPY schemas/     ./schemas/
+COPY streaming/   ./streaming/
+COPY lakehouse/   ./lakehouse/
+COPY scripts/     ./scripts/
+COPY main.py      .
+
+# Ajustar paths de checkpoints y lakehouse a los volúmenes internos
+ENV DELTA_LAKE_PATH=/data/lakehouse
+ENV CHECKPOINT_BASE=/data/checkpoints
+
+CMD ["python3", "main.py"]
