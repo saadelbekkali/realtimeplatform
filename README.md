@@ -7,6 +7,8 @@ Ingesta trades reales de Binance via CDC, procesa con Spark Structured Streaming
 
 ## Arquitectura
 
+![Architecture](architecture.jpg)
+
 ```
 Binance REST API (/api/v3/trades)
         │
